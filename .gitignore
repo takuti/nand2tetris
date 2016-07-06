@@ -1,3 +1,6 @@
 tools/
 HardwareSimulator
 *.out
+
+project/
+target/
