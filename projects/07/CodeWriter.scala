@@ -61,22 +61,43 @@ class CodeWriter(_filename: String) {
   }
 
   def writePushPop(command: CommandType, segment: String, index: Int) = {
+
+    val access_seg_i = segment match {
+      case "constant" => s"@$index\n"
+      case "local"    => s"@$index\nD=A\n@1\nA=M+D\n"
+      case "argument" => s"@$index\nD=A\n@2\nA=M+D\n"
+      case "this"     => s"@$index\nD=A\n@3\nA=M+D\n"
+      case "that"     => s"@$index\nD=A\n@4\nA=M+D\n"
+      case "pointer"  => s"@$index\nD=A\n@3\nA=A+D\n"
+      case "temp"     => s"@$index\nD=A\n@5\nA=A+D\n"
+    }
+
     // only support `constant` segment
     if (command == C_PUSH) {
-      // write @index to SP and SP++
-      writer.write(s"@$index\n")
-      writer.write("D=A\n")
+      // write to SP and SP++
+      writer.write(access_seg_i)
+
+      segment match {
+        case "constant" => writer.write("D=A\n")
+        case _          => writer.write("D=M\n")
+      }
+
       writer.write("@0\n")
       writer.write("M=M+1\n")
       writer.write("A=M-1\n")
       writer.write("M=D\n")
     } else if (command == C_POP) {
-      // SP-- and write to @index
-      writer.write("@0\n")
+      // SP-- and read value
+      writer.write(access_seg_i)
+      writer.write("D=A\n")
+      writer.write("@15\n") // keep dist address
+      writer.write("M=D\n")
+      writer.write("@0\n") // SP-- and get popped value
       writer.write("M=M-1\n")
       writer.write("A=M\n")
       writer.write("D=M\n")
-      writer.write(s"@$index\n")
+      writer.write("@15\n")
+      writer.write("A=M\n") // move to the dist address
       writer.write("M=D\n")
     }
   }
