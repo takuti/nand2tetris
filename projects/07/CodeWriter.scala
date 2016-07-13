@@ -5,12 +5,6 @@ import java.io.PrintWriter
 class CodeWriter(_filename: String) {
   val writer = new PrintWriter(_filename)
 
-  // set initial stack pointer
-  writer.write("@256\n")
-  writer.write("D=A\n")
-  writer.write("@0\n")
-  writer.write("M=D\n")
-
   var current_vmname = "" // for static variables
   var cmp_cnt = 0 // for arithmetic commands with comparison (i.e. jumping w/ label)
 
