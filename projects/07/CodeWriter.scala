@@ -1,6 +1,7 @@
 package vmtranslator
 
 import java.io.PrintWriter
+import java.io.File
 
 class CodeWriter(_filename: String) {
   val writer = new PrintWriter(_filename)
@@ -9,7 +10,9 @@ class CodeWriter(_filename: String) {
   var cmp_cnt = 0 // for arithmetic commands with comparison (i.e. jumping w/ label)
 
   def setFileName(filename: String) = {
-    current_vmname = filename.replaceAll("\\.vm", "")
+    val file = new File(filename)
+    current_vmname = file.getName.replaceAll("\\.vm", "")
+    println(current_vmname)
   }
 
   def writeArithmetic(command: String) = {
@@ -70,6 +73,7 @@ class CodeWriter(_filename: String) {
       case "that"     => s"@$index\nD=A\n@4\nA=M+D\n"
       case "pointer"  => s"@$index\nD=A\n@3\nA=A+D\n"
       case "temp"     => s"@$index\nD=A\n@5\nA=A+D\n"
+      case "static"   => s"@$current_vmname.$index\n"
     }
 
     // only support `constant` segment
