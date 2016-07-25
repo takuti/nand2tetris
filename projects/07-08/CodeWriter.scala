@@ -106,6 +106,26 @@ class CodeWriter(_filename: String) {
     }
   }
 
+  def writeLabel(label: String) = {
+    writer.write(s"($label)\n")
+  }
+
+  def writeGoto(label: String) = {
+    writer.write(s"@$label\n")
+    writer.write("0;JMP\n")
+  }
+
+  def writeIf(label: String) = {
+    // pop and keep it in D
+    writePushPop(C_POP, "constant", 13)
+    writer.write("@13\n")
+    writer.write("D=M\n")
+
+    // if popped value != 0 -> jump to the label
+    writer.write(s"@$label\n")
+    writer.write("D;JNE\n")
+  }
+
   def close() = {
     writer.write("(END)\n")
     writer.write("@END\n")

@@ -37,8 +37,17 @@ object VMtranslator {
 
         if (!parser.command.isEmpty()) {
           val ctype = parser.commandType()
-          if (ctype == C_ARITHMETIC) writer.writeArithmetic(parser.arg1())
-          else if (ctype == C_PUSH || ctype == C_POP) writer.writePushPop(ctype, parser.arg1(), parser.arg2())
+
+          if (ctype == C_ARITHMETIC)
+            writer.writeArithmetic(parser.arg1())
+          else if (ctype == C_PUSH || ctype == C_POP)
+            writer.writePushPop(ctype, parser.arg1(), parser.arg2())
+          else if (ctype == C_LABEL)
+            writer.writeLabel(parser.arg1())
+          else if (ctype == C_GOTO)
+            writer.writeGoto(parser.arg1())
+          else if (ctype == C_IF)
+            writer.writeIf(parser.arg1())
         }
       }
     }
