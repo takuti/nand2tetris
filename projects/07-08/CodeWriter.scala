@@ -126,6 +126,42 @@ class CodeWriter(_filename: String) {
     writer.write("D;JNE\n")
   }
 
+  def writeCall(functionName: String, numArgs: Int) = {
+  }
+
+  def writeReturn() = {
+    // M[13] = LCL(M[1])
+    writer.write("@1\nD=M\n@13\nM=D\n")
+
+    // write popped value to M[ ARG(M[2]) ]
+    writePushPop(C_POP, "argument", 0)
+
+    // SP(M[0]) = ARG(M[2]) + 1
+    writer.write("@2\nD=M\n@0\nM=D+1\n")
+
+    // THAT(M[4]) = M[ M[13] - 1 ]
+    writer.write("@1\nD=A\n@13\nA=M-D\nD=M\n@4\nM=D\n")
+
+    // THIS(M[3]) = M[ M[13] - 2 ]
+    writer.write("@2\nD=A\n@13\nA=M-D\nD=M\n@3\nM=D\n")
+
+    // ARG(M[2]) = M[ M[13] - 3 ]
+    writer.write("@3\nD=A\n@13\nA=M-D\nD=M\n@2\nM=D\n")
+
+    // LCL(M[1]) = M[ M[13] - 4 ]
+    writer.write("@4\nD=A\n@13\nA=M-D\nD=M\n@1\nM=D\n")
+
+    // goto the return address; save M[ M[13] - 5 ] to M[14]
+    writer.write("@5\nD=A\n@13\nA=M-D\nD=M\n@14\nM=D\n")
+  }
+
+  def writeFunction(functionName: String, numLocals: Int) = {
+    writeLabel(functionName)
+
+    // initialize k local variables with 0
+    for (k <- 0 until numLocals) writer.write(s"@$k\nD=A\n@1\nA=M+D\nM=0\n")
+  }
+
   def close() = {
     writer.write("(END)\n")
     writer.write("@END\n")

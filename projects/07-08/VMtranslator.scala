@@ -42,6 +42,9 @@ object VMtranslator {
             case C_LABEL                  => writer.writeLabel(parser.arg1())
             case C_GOTO                   => writer.writeGoto(parser.arg1())
             case C_IF                     => writer.writeIf(parser.arg1())
+            case C_FUNCTION               => writer.writeFunction(parser.arg1(), parser.arg2())
+            case C_CALL                   => writer.writeCall(parser.arg1(), parser.arg2())
+            case C_RETURN                 => writer.writeReturn()
           }
         }
       }
