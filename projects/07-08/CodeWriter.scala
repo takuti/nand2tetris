@@ -8,6 +8,7 @@ class CodeWriter(_filename: String) {
 
   var current_vmname = "" // for static variables
   var cmp_cnt = 0 // for arithmetic commands with comparison (i.e. jumping w/ label)
+  var call_cnt = 0 // for return-address used by function callings
 
   def setFileName(filename: String) = {
     val file = new File(filename)
@@ -127,11 +128,68 @@ class CodeWriter(_filename: String) {
   }
 
   def writeCall(functionName: String, numArgs: Int) = {
+    // define return-address as a unique symbol
+    // and push the address itself
+    writer.write(s"@return-address.$call_cnt\n")
+    writer.write("D=A\n")
+    writer.write("@0\n")
+    writer.write("M=M+1\n")
+    writer.write("A=M-1\n")
+    writer.write("M=D\n")
+
+    // push LCL address
+    writer.write("@1\n")
+    writer.write("D=M\n")
+    writer.write("@0\n")
+    writer.write("M=M+1\n")
+    writer.write("A=M-1\n")
+    writer.write("M=D\n")
+
+    // push ARG address
+    writer.write("@2\n")
+    writer.write("D=M\n")
+    writer.write("@0\n")
+    writer.write("M=M+1\n")
+    writer.write("A=M-1\n")
+    writer.write("M=D\n")
+
+    // push THIS address
+    writer.write("@3\n")
+    writer.write("D=M\n")
+    writer.write("@0\n")
+    writer.write("M=M+1\n")
+    writer.write("A=M-1\n")
+    writer.write("M=D\n")
+
+    // push THAT address
+    writer.write("@4\n")
+    writer.write("D=M\n")
+    writer.write("@0\n")
+    writer.write("M=M+1\n")
+    writer.write("A=M-1\n")
+    writer.write("M=D\n")
+
+    // ARG(M[2]) = SP(M[0]) - n - 5
+    writer.write("@0\nD=M\n")
+    writer.write(s"@$numArgs\nD=D-A\n")
+    writer.write("@5\nD=D-A\n")
+    writer.write("@2\nM=D\n")
+
+    // LCL(M[1]) = SP(M[0])
+    writer.write("@0\nD=M\n@1\nM=D\n")
+
+    writeGoto(functionName)
+
+    writeLabel(s"return-address.$call_cnt")
+    call_cnt += 1
   }
 
   def writeReturn() = {
     // M[13] = LCL(M[1])
     writer.write("@1\nD=M\n@13\nM=D\n")
+
+    // M[14] = M[ M[13] - 5 ]
+    writer.write("@5\nD=A\n@13\nA=M-D\nD=M\n@14\nM=D\n")
 
     // write popped value to M[ ARG(M[2]) ]
     writePushPop(C_POP, "argument", 0)
@@ -151,21 +209,16 @@ class CodeWriter(_filename: String) {
     // LCL(M[1]) = M[ M[13] - 4 ]
     writer.write("@4\nD=A\n@13\nA=M-D\nD=M\n@1\nM=D\n")
 
-    // goto the return address; save M[ M[13] - 5 ] to M[14]
-    writer.write("@5\nD=A\n@13\nA=M-D\nD=M\n@14\nM=D\n")
+    // goto the return address (M[14])
+    writer.write("@14\nA=M\n0;JMP\n")
   }
 
   def writeFunction(functionName: String, numLocals: Int) = {
     writeLabel(functionName)
 
     // initialize k local variables with 0
-    for (k <- 0 until numLocals) writer.write(s"@$k\nD=A\n@1\nA=M+D\nM=0\n")
+    for (k <- 0 until numLocals) writePushPop(C_PUSH, "constant", 0)
   }
 
-  def close() = {
-    writer.write("(END)\n")
-    writer.write("@END\n")
-    writer.write("0;JMP\n")
-    writer.close()
-  }
+  def close() = writer.close()
 }

@@ -33,6 +33,12 @@ object VMtranslator {
 
     val writer = new CodeWriter(out_filename)
 
+    // bootstrap code if Sys.vm exists
+    if (in_filenames.filter(name => ".*?\\Sys.vm".r.findFirstIn(name).nonEmpty).nonEmpty) {
+      writer.writer.write("@256\nD=A\n@0\nM=D\n") // SP = 256
+      writer.writeCall("Sys.init", 0) // call Sys.init
+    }
+
     for (in_filename <- in_filenames) {
       val parser = new Parser(in_filename)
       writer.setFileName(in_filename)
