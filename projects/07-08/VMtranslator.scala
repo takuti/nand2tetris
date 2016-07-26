@@ -14,18 +14,23 @@ object VMtranslator {
     val is_dir = !args{0}.matches("(.*?)\\.vm")
     var in_filenames = Array[String]()
 
-    if (is_dir) {
-      // need to translate all .vm files under a directory
-      val dirname = args{0}.replaceAll("/+$", "/")
-      val files_all = new File(dirname).listFiles
-      val files_vm = files_all.filter(f => ".*?\\.vm".r.findFirstIn(f.getName).isDefined)
-      for (f <- files_vm) in_filenames :+= dirname + f.getName
-    } else {
-      in_filenames :+= args{0}
-    }
+    val out_filename = (
+      if (is_dir) {
+        // need to translate all .vm files under a directory
+        val dirpath = (args{0} + "/").replaceAll("/+$", "/")
+        val dir = new File(dirpath)
+        val files_all = dir.listFiles
+        val files_vm = files_all.filter(f => ".*?\\.vm".r.findFirstIn(f.getName).isDefined)
+        for (f <- files_vm) in_filenames :+= dirpath + f.getName
 
-    val out_filename = if (is_dir) args{0}.replaceAll("/+$", "") + ".asm"
-                       else args{0}.replaceAll("\\.vm", ".asm")
+        dirpath + dir.getName + ".asm"
+      } else {
+        in_filenames :+= args{0}
+
+        args{0}.replaceAll("\\.vm", ".asm")
+      }
+    )
+
     val writer = new CodeWriter(out_filename)
 
     for (in_filename <- in_filenames) {
