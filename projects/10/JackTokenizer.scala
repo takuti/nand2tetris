@@ -54,7 +54,7 @@ class JackTokenizer(_filepath: String) {
   // called when hasMoreTokens() returned true
   def advance() = { token = tokens.next() }
 
-  def tokenType() = {
+  def tokenType(): TokenType = {
     token match {
       case t if t.matches(type_matcher("keyword"))          => KEYWORD
       case t if t.matches(type_matcher("symbol"))           => SYMBOL
