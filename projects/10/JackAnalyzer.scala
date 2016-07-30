@@ -53,9 +53,9 @@ object JackAnalyzer {
           case IDENTIFIER   => tokenizer.identifier()
         }
 
-        writer.write(raw"""<${tag}> ${value} </${tag}>""" + "\n")
+        writer.println(raw"""<${tag}> ${value} </${tag}>""")
       }
-      writer.write("</tokens>\n")
+      writer.println("</tokens>")
 
       writer.close
     }
