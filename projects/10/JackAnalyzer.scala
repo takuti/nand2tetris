@@ -40,14 +40,20 @@ object JackAnalyzer {
           case IDENTIFIER   => "identifier"
         }
 
-        val token = tokenizer.token match {
-          case "<"    => "&lt;"
-          case ">"    => "&gt;"
-          case "&"    => "&amp;"
-          case _ @ t  => t
+        val value = tokenizer.tokenType() match {
+          case KEYWORD      => tokenizer.token
+          case SYMBOL       => tokenizer.token match {
+                                 case "<"    => "&lt;"
+                                 case ">"    => "&gt;"
+                                 case "&"    => "&amp;"
+                                 case _ @ t  => tokenizer.symbol()
+                               }
+          case INT_CONST    => tokenizer.intVal()
+          case STRING_CONST => tokenizer.stringVal()
+          case IDENTIFIER   => tokenizer.identifier()
         }
 
-        writer.write(raw"""<${tag}> ${token.replaceAll("\"", "")} </${tag}>""" + "\n")
+        writer.write(raw"""<${tag}> ${value} </${tag}>""" + "\n")
       }
       writer.write("</tokens>\n")
 

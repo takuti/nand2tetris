@@ -9,6 +9,29 @@ case object IDENTIFIER extends TokenType
 case object INT_CONST extends TokenType
 case object STRING_CONST extends TokenType
 
+sealed abstract class KW
+case object CLASS extends KW
+case object METHOD extends KW
+case object FUNCTION extends KW
+case object CONSTRUCTOR extends KW
+case object INT extends KW
+case object BOOLEAN extends KW
+case object CHAR extends KW
+case object VOID extends KW
+case object VAR extends KW
+case object STATIC extends KW
+case object FIELD extends KW
+case object LET extends KW
+case object DO extends KW
+case object IF extends KW
+case object ELSE extends KW
+case object WHILE extends KW
+case object RETURN extends KW
+case object TRUE extends KW
+case object FALSE extends KW
+case object NULL extends KW
+case object THIS extends KW
+
 class JackTokenizer(_filepath: String) {
   val keywords = Array("class", "constructor", "function", "method", "field", "static", "var", "int", "char", "boolean", "void", "true", "false", "null", "this", "let", "do", "if", "else", "while", "return")
   val symbols = Array("{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "|", "<", ">", "=", "~")
@@ -63,4 +86,38 @@ class JackTokenizer(_filepath: String) {
       case t if t.matches(type_matcher("identifier"))       => IDENTIFIER
     }
   }
+
+  def keyWord(): KW = {
+    token match {
+      case "class"        => CLASS
+      case "method"       => METHOD
+      case "function"     => FUNCTION
+      case "constructor"  => CONSTRUCTOR
+      case "int"          => INT
+      case "boolean"      => BOOLEAN
+      case "char"         => CHAR
+      case "void"         => VOID
+      case "var"          => VAR
+      case "static"       => STATIC
+      case "field"        => FIELD
+      case "let"          => LET
+      case "do"           => DO
+      case "if"           => IF
+      case "else"         => ELSE
+      case "while"        => WHILE
+      case "return"       => RETURN
+      case "true"         => TRUE
+      case "false"        => FALSE
+      case "null"         => NULL
+      case "this"         => THIS
+    }
+  }
+
+  def symbol(): Char = token.charAt(0)
+
+  def identifier(): String = token
+
+  def intVal(): Int = token.toInt
+
+  def stringVal(): String = token.replaceAll("\"", "")
 }
