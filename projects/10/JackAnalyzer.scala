@@ -23,7 +23,7 @@ object JackAnalyzer {
       }
     )
 
-    // xxx.jack -> xxxT.xml
+    // Tokenizer: xxx.jack -> xxxT.xml
     for (in_filepath <- in_filepaths) {
       val writer = new PrintWriter(in_filepath.replaceAll("\\.jack", "T.xml"))
       val tokenizer = new JackTokenizer(in_filepath)
@@ -60,5 +60,10 @@ object JackAnalyzer {
       writer.close
     }
 
+    // CompilationEngine: xxx.jack -> xxx.xml
+    for (in_filepath <- in_filepaths) {
+      val out_filepath = in_filepath.replaceAll("\\.jack", ".xml")
+      new CompilationEngine(in_filepath, out_filepath)
+    }
   }
 }
