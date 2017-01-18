@@ -1,7 +1,5 @@
 import java.io.PrintWriter
-
-import assembler.{CommandType,A_COMMAND,C_COMMAND,L_COMMAND}
-import assembler.{Parser,Code,SymbolTable}
+import assembler._
 
 object Assembler {
   def initializeSymbolTable(): SymbolTable = {
