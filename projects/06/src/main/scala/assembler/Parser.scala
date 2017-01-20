@@ -24,13 +24,12 @@ class Parser(_filename: String) {
     command = "\\s".r.replaceAllIn(command, "")
   }
 
-  def commandType(): CommandType = {
+  def commandType(): CommandType =
     command.charAt(0) match {
       case '@'  => A_COMMAND
       case '('  => L_COMMAND
       case _    => C_COMMAND
     }
-  }
 
   // A_COMMAND @Xxx and L_COMMAND (Xxx)
   def symbol(): String = {

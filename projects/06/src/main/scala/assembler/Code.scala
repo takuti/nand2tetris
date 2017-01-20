@@ -2,7 +2,7 @@ package assembler
 
 class Code {
   // 3bits
-  def dest(mnemonic: String): String = {
+  def dest(mnemonic: String): String =
     mnemonic match {
       case ""     => "000"
       case "M"    => "001"
@@ -13,10 +13,9 @@ class Code {
       case "AD"   => "110"
       case "AMD"  => "111"
     }
-  }
 
   // 7bits
-  def comp(mnemonic: String): String = {
+  def comp(mnemonic: String): String =
     mnemonic match {
       case "0"    => "0101010"
       case "1"    => "0111111"
@@ -47,10 +46,9 @@ class Code {
       case "D&M"  => "1000000"
       case "D|M"  => "1010101"
     }
-  }
 
   // 3bits
-  def jump(mnemonic: String): String = {
+  def jump(mnemonic: String): String =
     mnemonic match {
       case ""     => "000"
       case "JGT"  => "001"
@@ -61,5 +59,4 @@ class Code {
       case "JLE"  => "110"
       case "JMP"  => "111"
     }
-  }
 }
