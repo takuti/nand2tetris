@@ -32,28 +32,20 @@ class Parser(_filename: String) {
     }
 
   // A_COMMAND @Xxx and L_COMMAND (Xxx)
-  def symbol(): String = {
-    val pattern = "[@(]([^)]+)\\)?+".r
-    command match { case pattern(xxx) => xxx }
-  }
+  def symbol(): String = take("[@(]([^)]+)\\)?+".r)
 
   // C_COMMAND dest=comp;jump
-  def dest(): String = {
-    var dst = ""
-    if (command.indexOf('=') > 0) {
-      val pattern = "([^=;]+).*".r
-      dst = command match { case pattern(dst) => dst }
+  def dest(): String = take("^([^=;]+)=.*".r)
+
+  def comp(): String =
+    if (command.indexOf('=') > 0) take(".+=([^;]+).*".r)
+    else take("([^;]+).*".r)
+
+  def jump(): String = take("[^;]+;?+(.*)".r)
+
+  private def take(re: util.matching.Regex) =
+    re findFirstMatchIn command match {
+      case Some(m) => m.group(1)
+      case None => ""
     }
-    dst
-  }
-
-  def comp(): String = {
-    val pattern = if (command.indexOf('=') > 0) ".+=([^;]+).*".r else "([^;]+).*".r
-    command match { case pattern(cmp) => cmp }
-  }
-
-  def jump(): String = {
-    val pattern = "[^;]+;?+(.*)".r
-    command match { case pattern(jmp) => jmp }
-  }
 }
