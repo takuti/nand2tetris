@@ -84,15 +84,15 @@ object Assembler {
 
     val st: SymbolTable = initializeSymbolTable()
 
-    firstPass(st, args{0})
+    firstPass(st, args(0))
 
     // get an output filename corresponding to the .hack files
     val pattern = "(.*?)\\.asm".r
-    val out_filename = args{0} match {
+    val out_filename = args(0) match {
       case pattern(name) => name + ".hack"
       case _             => System.exit(1)
     }
 
-    secondPass(st, args{0}, out_filename.toString)
+    secondPass(st, args(0), out_filename.toString)
   }
 }
