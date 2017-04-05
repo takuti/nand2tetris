@@ -63,7 +63,7 @@ object JackAnalyzer {
     // CompilationEngine: xxx.jack -> xxx.xml
     for (in_filepath <- in_filepaths) {
       val out_filepath = in_filepath.replaceAll("\\.jack", ".xml")
-      new CompilationEngine(in_filepath, out_filepath)
+      new CompilationEngineXML(in_filepath, out_filepath)
     }
   }
 }
