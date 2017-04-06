@@ -15,7 +15,7 @@ case object TEMP extends Segment { override def toString = "temp" }
 sealed abstract class Command
 case object ADD extends Command { override def toString = "add" }
 case object SUB extends Command { override def toString = "sub" }
-case object NEQ extends Command { override def toString = "neq" }
+case object NEG extends Command { override def toString = "neg" }
 case object EQ extends Command { override def toString = "eq" }
 case object GT extends Command { override def toString = "gt" }
 case object LT extends Command { override def toString = "lt" }
