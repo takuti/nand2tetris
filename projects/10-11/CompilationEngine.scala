@@ -138,11 +138,6 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
     // }
 
     tokenizer.advance()
-
-    if (returnType == "void") {
-      writer.writePush(ConstSegment, 0)
-      writer.writeReturn()
-    }
   }
 
   def compileParameterList() {
@@ -340,6 +335,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
     if (tokenizer.tokenType() != SYMBOL ||
         (tokenizer.tokenType() == SYMBOL &&
          tokenizer.symbol() != ';')) compileExpression()
+    else writer.writePush(ConstSegment, 0)
 
     writer.writeReturn()
 
@@ -383,8 +379,13 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
     val ops = Seq('+', '-', '*', '/', '&', '|', '<', '>', '=')
     while (tokenizer.tokenType() == SYMBOL &&
            ops.contains(tokenizer.symbol())) {
+
+      val op = getToken().charAt(0)
+
+      tokenizer.advance()
+      compileTerm()
+
       // op
-      val op = getToken().head
       if (op == '+') writer.writeArithmetic(ADD)
       else if (op == '-') writer.writeArithmetic(SUB)
       else if (op == '*') writer.writeCall("Math.multiply", 2)
@@ -394,9 +395,6 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
       else if (op == '<') writer.writeArithmetic(LT)
       else if (op == '>') writer.writeArithmetic(GT)
       else if (op == '=') writer.writeArithmetic(EQ)
-
-      tokenizer.advance()
-      compileTerm()
     }
   }
 
