@@ -5,7 +5,14 @@ import jackanalizer._
 
 class CompilationEngine(_in_filepath: String, _out_filepath: String) {
   val tokenizer = new JackTokenizer(_in_filepath)
-  val writer = new PrintWriter(_out_filepath)
+  val writer = new VMWriter(_out_filepath)
+  val symbolTable = new SymbolTable()
+
+  var className = ""
+
+  // for nested labels
+  var nIf = 0
+  var nLoop = 0
 
   // for each `compileXX` methods...
   // Rule #1: "advance" for the 1st grammer element is done by caller
@@ -16,40 +23,30 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
         tokenizer.keyWord() == CLASS) compileClass()
   }
 
-  def printToken() {
-    val tag = tokenizer.tokenType() match {
-      case KEYWORD      => "keyword"
-      case SYMBOL       => "symbol"
-      case INT_CONST    => "integerConstant"
-      case STRING_CONST => "stringConstant"
-      case IDENTIFIER   => "identifier"
-    }
+  writer.close()
 
-    val value = tokenizer.tokenType() match {
+  def getToken(): String = {
+    tokenizer.tokenType() match {
       case KEYWORD      => tokenizer.token
       case SYMBOL       => tokenizer.token match {
                              case "<"    => "&lt;"
                              case ">"    => "&gt;"
                              case "&"    => "&amp;"
-                             case _ @ t  => tokenizer.symbol()
+                             case _ @ t  => tokenizer.symbol().toString
                            }
-      case INT_CONST    => tokenizer.intVal()
+      case INT_CONST    => tokenizer.intVal().toString
       case STRING_CONST => tokenizer.stringVal()
       case IDENTIFIER   => tokenizer.identifier()
     }
-
-    writer.println(raw"""<${tag}> ${value} </${tag}>""")
   }
 
   def compileClass() {
-    writer.println("<class>")
-    printToken() // class
+    // class
 
-    tokenizer.advance()
-    printToken() // className
+    tokenizer.advance() // className
+    className = getToken()
 
-    tokenizer.advance()
-    printToken() // {
+    tokenizer.advance() // {
 
     tokenizer.advance()
 
@@ -63,64 +60,74 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
       compileSubroutine()
     }
 
-    printToken() // }
-
-    writer.println("</class>")
-    writer.close
+    // }
   }
 
   def compileClassVarDec() {
-    writer.println("<classVarDec>")
+    val kind = getToken() match { // 'static' | 'field'
+      case "static" => StaticKind
+      case "field" => FieldKind
+    }
 
-    printToken() // 'static' | 'field'
+    tokenizer.advance() // type
+    val stype = getToken()
 
-    tokenizer.advance()
-    printToken() // type
-
-    tokenizer.advance()
-    printToken() // varName
+    tokenizer.advance() // varName
+    symbolTable.define(getToken(), stype, kind)
 
     tokenizer.advance()
     while (tokenizer.tokenType() == SYMBOL &&
            tokenizer.symbol() == ',') {
-      printToken() // ,
+      // ,
 
-      tokenizer.advance()
-      printToken() // varName
+      tokenizer.advance() // varName having same kind & type
+      symbolTable.define(getToken(), stype, kind)
 
       tokenizer.advance()
     }
 
-    printToken() // ;
-
-    writer.println("</classVarDec>")
+    // ;
 
     tokenizer.advance()
   }
 
   def compileSubroutine() {
-    writer.println("<subroutineDec>")
+    symbolTable.startSubroutine()
 
-    printToken() // 'constructor' | 'function' | 'method'
+    val funcType = getToken() // 'constructor' | 'function' | 'method'
+
+    tokenizer.advance() // 'void' | type
+    val returnType = getToken()
+
+    tokenizer.advance() // subroutineName
+    val subroutineName = getToken()
+
+    tokenizer.advance() // (
 
     tokenizer.advance()
-    printToken() // 'void' | type
 
-    tokenizer.advance()
-    printToken() // subroutineName
+    if (funcType == "method") {
+      // arg[0] is set to "this", so thre are k+1 arguments in total
+      symbolTable.define("this", className, ArgumentKind)
+    }
 
-    tokenizer.advance()
-    printToken() // (
-
-    tokenizer.advance()
     compileParameterList()
 
-    printToken() // )
+    val nLocals = symbolTable.varCount(VarKind)
+    writer.writeFunction(className + "." + subroutineName, nLocals)
 
-    writer.println("<subroutineBody>")
+    // "this" points to the current object
+    if (funcType == "method") {
+      writer.writePush(ArgSegment, 0)
+      writer.writePop(PointerSegment, 0)
+    } else if (funcType == "constructor") {
+      writer.writePush(ThisSegment, 0)
+      writer.writePop(PointerSegment, 0)
+    }
 
-    tokenizer.advance()
-    printToken() // {
+    // )
+
+    tokenizer.advance() // {
 
     tokenizer.advance()
     while (tokenizer.tokenType() == KEYWORD &&
@@ -128,77 +135,76 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     compileStatements()
 
-    printToken() // }
-
-    writer.println("</subroutineBody>")
-
-    writer.println("</subroutineDec>")
+    // }
 
     tokenizer.advance()
+
+    if (returnType == "void") {
+      writer.writePush(ConstSegment, 0)
+      writer.writeReturn()
+    }
   }
 
   def compileParameterList() {
-    writer.println("<parameterList>")
-
     val type_keywords = Seq(INT, CHAR, BOOLEAN)
+    var stype = ""
+    var name = ""
     if (tokenizer.tokenType() == IDENTIFIER ||
         (tokenizer.tokenType() == KEYWORD &&
          type_keywords.contains(tokenizer.keyWord()))) {
-      printToken() // type
+      stype = getToken() // type
 
-      tokenizer.advance()
-      printToken() // varName
+      tokenizer.advance() // varName
+      name = getToken()
+
+      symbolTable.define(name, stype, ArgumentKind)
 
       tokenizer.advance()
       while (tokenizer.tokenType() == SYMBOL &&
              tokenizer.symbol() == ',') {
-        printToken() // ,
+        // ,
 
-        tokenizer.advance()
-        printToken() // type
+        tokenizer.advance() // type
+        stype = getToken()
 
-        tokenizer.advance()
-        printToken() // varName
+        tokenizer.advance() // varName
+        name = getToken()
+
+        symbolTable.define(name, stype, ArgumentKind)
 
         tokenizer.advance()
       }
     }
-
-    writer.println("</parameterList>")
   }
 
   def compileVarDec() {
-    writer.println("<varDec>")
+    // 'var'
 
-    printToken() // 'var'
+    tokenizer.advance() // type
+    val stype = getToken()
 
-    tokenizer.advance()
-    printToken() // type
+    tokenizer.advance() // varName
 
-    tokenizer.advance()
-    printToken() // varName
+    symbolTable.define(getToken(), stype, VarKind)
 
     tokenizer.advance()
     while (tokenizer.tokenType() == SYMBOL &&
            tokenizer.symbol() == ',') {
-      printToken() // ,
+      // ,
 
-      tokenizer.advance()
-      printToken() // varName
+      tokenizer.advance() // varName
+
+      symbolTable.define(getToken(), stype, VarKind)
 
       tokenizer.advance()
     }
 
-    printToken() // ;
-
-    writer.println("</varDec>")
+    // ;
 
     tokenizer.advance()
   }
 
   def compileStatements() {
-    writer.println("<statements>")
-
     while (tokenizer.tokenType() == KEYWORD &&
            Seq(LET, IF, WHILE, DO, RETURN).contains(tokenizer.keyWord())) {
       tokenizer.keyWord() match {
@@ -210,196 +216,240 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
         case _      =>
       }
     }
-
-    writer.println("</statements>")
   }
 
   def compileDo() {
-    writer.println("<doStatement>")
-
-    printToken() // 'do'
+    // 'do'
 
     tokenizer.advance()
     compileSubroutineCall()
 
-    printToken() // ;
-
-    writer.println("</doStatement>")
+    // ;
 
     tokenizer.advance()
   }
 
   def compileSubroutineCall() {
-    printToken() // subroutineName | className | varName
+    // subroutineName | className | varName
+    var subroutineName = getToken()
 
     tokenizer.advance()
     if (tokenizer.symbol() == '.') {
-      printToken() // .
+      subroutineName += "." // .
 
       tokenizer.advance()
-      printToken() // subroutineName
+      subroutineName += getToken() // subroutineName
 
       tokenizer.advance()
     }
 
-    printToken() // (
+    // (
 
     tokenizer.advance()
-    compileExpressionList()
+    val nArgs = compileExpressionList()
 
-    printToken() // )
+    writer.writeCall(subroutineName, nArgs)
+
+    // )
 
     tokenizer.advance()
   }
 
   def compileLet() {
-    writer.println("<letStatement>")
-
-    printToken() // 'let'
+    // 'let'
 
     tokenizer.advance()
-    printToken() // varName
+    val varName = getToken() // varName
 
     tokenizer.advance()
-    if (tokenizer.tokenType() == SYMBOL &&
-        tokenizer.symbol() == '[') {
-      printToken() // '['
+    val seg = if (tokenizer.tokenType() == SYMBOL && tokenizer.symbol() == '[') {
+      // array access
+
+      // '['
 
       tokenizer.advance()
       compileExpression()
 
-      printToken() // ']'
+      // ']'
 
       tokenizer.advance()
+
+      writer.writePop(PointerSegment, 1)
+
+      ThatSegment
+    } else {
+      symbolTable.kindOf(varName) match {
+        case StaticKind => StaticSegment
+        case FieldKind => ThisSegment
+        case ArgumentKind => ArgSegment
+        case VarKind => LocalSegment
+        case NoneKind => TempSegment
+      }
     }
 
-    printToken() // '='
+    // '='
 
     tokenizer.advance()
     compileExpression()
 
-    printToken() // ';'
+    // ';'
 
-    writer.println("</letStatement>")
+    if (seg == ThatSegment) writer.writePop(ThatSegment, 0)
+    else writer.writePop(seg, symbolTable.indexOf(varName))
 
     tokenizer.advance()
   }
 
   def compileWhile() {
-    writer.println("<whileStatement>")
+    // 'while'
+    nLoop += 1
 
-    printToken() // 'while'
+    writer.writeLabel("LOOP_START_" + nLoop)
 
     tokenizer.advance()
-    printToken() // '('
+    // '('
 
     tokenizer.advance()
     compileExpression()
 
-    printToken() // ')'
+    // ')'
+
+    writer.writeIf("LOOP_INSIDE_" + nLoop)
+    writer.writeGoto("LOOP_END_" + nLoop)
+    writer.writeLabel("LOOP_INSIDE_" + nLoop)
 
     tokenizer.advance()
-    printToken() // '{'
+    // '{'
 
     tokenizer.advance()
     compileStatements()
 
-    printToken() // '}'
+    // '}'
 
-    writer.println("</whileStatement>")
+    writer.writeLabel("LOOP_END_" + nLoop)
+
+    nLoop -= 1
 
     tokenizer.advance()
   }
 
   def compileReturn() {
-    writer.println("<returnStatement>")
-
-    printToken() // 'return'
+    // 'return'
 
     tokenizer.advance()
     if (tokenizer.tokenType() != SYMBOL ||
         (tokenizer.tokenType() == SYMBOL &&
          tokenizer.symbol() != ';')) compileExpression()
 
-    printToken() // ';'
-
-    writer.println("</returnStatement>")
+    writer.writeReturn()
 
     tokenizer.advance()
   }
 
   def compileIf() {
-    writer.println("<ifStatement>")
-
-    printToken() // 'if'
+    // 'if'
+    nIf += 1
 
     tokenizer.advance()
-    printToken() // '('
+    // '('
 
     tokenizer.advance()
     compileExpression()
 
-    printToken() // ')'
+    // ')'
+
+    writer.writeIf("IF_TRUE_" + nIf)
+    writer.writeGoto("IF_FALSE_" + nIf)
+    writer.writeLabel("IF_TRUE_" + nIf)
 
     tokenizer.advance()
-    printToken() // '{'
+    // '{'
 
     tokenizer.advance()
     compileStatements()
 
-    printToken() // '}'
+    // '}'
 
-    writer.println("</ifStatement>")
+    writer.writeLabel("IF_FALSE_" + nIf)
+
+    nIf -= 1
 
     tokenizer.advance()
   }
 
   def compileExpression() {
-    writer.println("<expression>")
-
     compileTerm()
 
-    val op = Seq('+', '-', '*', '/', '&', '|', '<', '>', '=')
+    val ops = Seq('+', '-', '*', '/', '&', '|', '<', '>', '=')
     while (tokenizer.tokenType() == SYMBOL &&
-           op.contains(tokenizer.symbol())) {
-      printToken() // op
+           ops.contains(tokenizer.symbol())) {
+      // op
+      val op = getToken().head
+      if (op == '+') writer.writeArithmetic(ADD)
+      else if (op == '-') writer.writeArithmetic(SUB)
+      else if (op == '*') writer.writeCall("Math.multiply", 2)
+      else if (op == '/') writer.writeCall("Math.divide", 2)
+      else if (op == '&') writer.writeArithmetic(AND)
+      else if (op == '|') writer.writeArithmetic(OR)
+      else if (op == '<') writer.writeArithmetic(LT)
+      else if (op == '>') writer.writeArithmetic(GT)
+      else if (op == '=') writer.writeArithmetic(EQ)
 
       tokenizer.advance()
       compileTerm()
     }
-
-    writer.println("</expression>")
   }
 
   def compileTerm() {
-    writer.println("<term>")
-
     tokenizer.tokenType() match {
       case SYMBOL => {
         tokenizer.symbol() match {
-          case '('       => printToken() // '('
+          case '('       => // '('
                             tokenizer.advance()
                             compileExpression()
-                            printToken() // ')'
+                            // ')'
                             tokenizer.advance()
-          case '-' | '~' => printToken() // '-' | '~'
+          case '-'       => // '-'
                             tokenizer.advance()
                             compileTerm()
+                            writer.writeArithmetic(NEG)
+          case '~' => // '~'
+                            tokenizer.advance()
+                            compileTerm()
+                            writer.writeArithmetic(NOT)
         }
       }
       case KEYWORD => {
-        val keyWordConstant = Seq(TRUE, FALSE, NULL, THIS)
-        if (keyWordConstant.contains(tokenizer.keyWord())) {
-          printToken()
+        val kw = tokenizer.keyWord()
+        if (kw == TRUE) {
+          writer.writePush(ConstSegment, 1)
+          writer.writeArithmetic(NEG)
+          tokenizer.advance()
+        } else if (kw == FALSE || kw == NULL) {
+          writer.writePush(ConstSegment, 0)
+          tokenizer.advance()
+        } else if (kw == THIS) {
+          writer.writePush(ArgSegment, 0)
           tokenizer.advance()
         }
       }
-      case STRING_CONST | INT_CONST => {
-        printToken()
+      case STRING_CONST => {
+        val str = getToken()
+        writer.writePush(ConstSegment, str.length)
+        writer.writeCall("String.new", 1)
+        str.foreach { c =>
+            writer.writePush(ConstSegment, c.toInt)
+            writer.writeCall("String.appendChar", 1)
+        }
+        tokenizer.advance()
+      }
+      case INT_CONST => {
+        writer.writePush(ConstSegment, getToken().toInt)
         tokenizer.advance()
       }
       case IDENTIFIER => {
-        printToken() // varName | subroutineName
+        // varName | subroutineName
+        var name = getToken()
         tokenizer.advance()
 
         if (tokenizer.tokenType() == SYMBOL) {
@@ -407,41 +457,44 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
             // subroutineCall
 
             if (tokenizer.symbol() == '.') {
-              printToken() // .
+              // .
 
               tokenizer.advance()
-              printToken() // subroutineName
+              name = name + "." + getToken() // subroutineName
 
               tokenizer.advance()
             }
 
-            printToken() // (
+            // (
 
             tokenizer.advance()
-            compileExpressionList()
+            val nExpr = compileExpressionList()
+            writer.writeCall(name, nExpr)
 
-            printToken() // )
+            // )
             tokenizer.advance()
           } else if (tokenizer.symbol() == '[') {
-            // varName '[' expression ']'
+            // varName '[' expression ']' (array access)
 
-            printToken() // '['
+            // '['
 
             tokenizer.advance()
             compileExpression()
 
-            printToken() // ']'
+            // ']'
+
+            writer.writePop(PointerSegment, 1)
+            writer.writePush(ThatSegment, 0)
+
             tokenizer.advance()
           }
         }
       }
     }
-
-    writer.println("</term>")
   }
 
-  def compileExpressionList() {
-    writer.println("<expressionList>")
+  def compileExpressionList(): Int = {
+    var nExpr = 0
 
     // non-empty expressionList
     if (tokenizer.tokenType() != SYMBOL ||
@@ -449,16 +502,18 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
          tokenizer.symbol() != ')')) {
 
       compileExpression()
+      nExpr += 1
 
       while (tokenizer.tokenType() == SYMBOL &&
              tokenizer.symbol() == ',') {
-        printToken() // ','
+        // ','
 
         tokenizer.advance()
         compileExpression()
+        nExpr += 1
       }
     }
 
-    writer.println("</expressionList>")
+    nExpr
   }
 }

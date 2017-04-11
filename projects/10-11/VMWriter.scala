@@ -3,14 +3,14 @@ package jackanalizer
 import java.io.PrintWriter
 
 sealed abstract class Segment
-case object CONST extends Segment { override def toString = "constant" }
-case object ARG extends Segment { override def toString = "argument" }
-case object LOCAL extends Segment { override def toString = "local" }
-case object STATIC extends Segment { override def toString = "static" }
-case object THIS extends Segment { override def toString = "this" }
-case object THAT extends Segment { override def toString = "that" }
-case object POINTER extends Segment { override def toString = "pointer" }
-case object TEMP extends Segment { override def toString = "temp" }
+case object ConstSegment extends Segment { override def toString = "constant" }
+case object ArgSegment extends Segment { override def toString = "argument" }
+case object LocalSegment extends Segment { override def toString = "local" }
+case object StaticSegment extends Segment { override def toString = "static" }
+case object ThisSegment extends Segment { override def toString = "this" }
+case object ThatSegment extends Segment { override def toString = "that" }
+case object PointerSegment extends Segment { override def toString = "pointer" }
+case object TempSegment extends Segment { override def toString = "temp" }
 
 sealed abstract class Command
 case object ADD extends Command { override def toString = "add" }
@@ -42,7 +42,7 @@ class VMWriter(outFilePath: String) {
 
   def writeFunction(name: String, nLocals: Int) = writer.write("function " + name + " " + nLocals + "\n")
 
-  def writeReturn = writer.write("return" + "\n")
+  def writeReturn() = writer.write("return" + "\n")
 
-  def close = writer.close
+  def close() = writer.close
 }
