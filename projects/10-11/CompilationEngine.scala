@@ -28,12 +28,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
   def getToken(): String = {
     tokenizer.tokenType() match {
       case KEYWORD      => tokenizer.token
-      case SYMBOL       => tokenizer.token match {
-                             case "<"    => "&lt;"
-                             case ">"    => "&gt;"
-                             case "&"    => "&amp;"
-                             case _ @ t  => tokenizer.symbol().toString
-                           }
+      case SYMBOL       => tokenizer.symbol().toString
       case INT_CONST    => tokenizer.intVal().toString
       case STRING_CONST => tokenizer.stringVal()
       case IDENTIFIER   => tokenizer.identifier()
@@ -378,7 +373,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     val ops = Seq('+', '-', '*', '/', '&', '|', '<', '>', '=')
     while (tokenizer.tokenType() == SYMBOL &&
-           ops.contains(tokenizer.symbol())) {
+           ops.contains(getToken().charAt(0))) {
 
       val op = getToken().charAt(0)
 
