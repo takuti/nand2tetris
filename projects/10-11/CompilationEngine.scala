@@ -108,6 +108,14 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     compileParameterList()
 
+    // )
+
+    tokenizer.advance() // {
+
+    tokenizer.advance()
+    while (tokenizer.tokenType() == KEYWORD &&
+           tokenizer.keyWord() == VAR) compileVarDec()
+
     val nLocals = symbolTable.varCount(VarKind)
     writer.writeFunction(className + "." + subroutineName, nLocals)
 
@@ -119,14 +127,6 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
       writer.writePush(ThisSegment, 0)
       writer.writePop(PointerSegment, 0)
     }
-
-    // )
-
-    tokenizer.advance() // {
-
-    tokenizer.advance()
-    while (tokenizer.tokenType() == KEYWORD &&
-           tokenizer.keyWord() == VAR) compileVarDec()
 
     compileStatements()
 
@@ -294,9 +294,10 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
   def compileWhile() {
     // 'while'
+    val nLoopLocal = nLoop
     nLoop += 1
 
-    writer.writeLabel("LOOP_START_" + nLoop)
+    writer.writeLabel("WHILE_EXP" + nLoopLocal)
 
     tokenizer.advance()
     // '('
@@ -306,9 +307,9 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     // ')'
 
-    writer.writeIf("LOOP_INSIDE_" + nLoop)
-    writer.writeGoto("LOOP_END_" + nLoop)
-    writer.writeLabel("LOOP_INSIDE_" + nLoop)
+    writer.writeArithmetic(NOT)
+
+    writer.writeIf("WHILE_END" + nLoopLocal)
 
     tokenizer.advance()
     // '{'
@@ -318,7 +319,9 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     // '}'
 
-    writer.writeLabel("LOOP_END_" + nLoop)
+    writer.writeGoto("WHILE_EXP" + nLoopLocal)
+
+    writer.writeLabel("WHILE_END" + nLoopLocal)
 
     nLoop -= 1
 
@@ -341,6 +344,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
   def compileIf() {
     // 'if'
+    val nIfLocal = nIf
     nIf += 1
 
     tokenizer.advance()
@@ -351,9 +355,9 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     // ')'
 
-    writer.writeIf("IF_TRUE_" + nIf)
-    writer.writeGoto("IF_FALSE_" + nIf)
-    writer.writeLabel("IF_TRUE_" + nIf)
+    writer.writeIf("IF_TRUE" + nIfLocal)
+    writer.writeGoto("IF_FALSE" + nIfLocal)
+    writer.writeLabel("IF_TRUE" + nIfLocal)
 
     tokenizer.advance()
     // '{'
@@ -363,11 +367,25 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     // '}'
 
-    writer.writeLabel("IF_FALSE_" + nIf)
-
-    nIf -= 1
+    writer.writeGoto("IF_END" + nIfLocal)
+    writer.writeLabel("IF_FALSE" + nIfLocal)
 
     tokenizer.advance()
+    if (tokenizer.tokenType() == KEYWORD && tokenizer.keyWord() == ELSE) {
+      tokenizer.advance()
+      // '{'
+
+      tokenizer.advance()
+      compileStatements()
+
+      // '}'
+
+      tokenizer.advance()
+    }
+
+    writer.writeLabel("IF_END" + nIfLocal)
+
+    nIf -= 1
   }
 
   def compileExpression() {
@@ -417,8 +435,8 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
       case KEYWORD => {
         val kw = tokenizer.keyWord()
         if (kw == TRUE) {
-          writer.writePush(ConstSegment, 1)
-          writer.writeArithmetic(NEG)
+          writer.writePush(ConstSegment, 0)
+          writer.writeArithmetic(NOT)
           tokenizer.advance()
         } else if (kw == FALSE || kw == NULL) {
           writer.writePush(ConstSegment, 0)
@@ -482,6 +500,18 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
             writer.writePush(ThatSegment, 0)
 
             tokenizer.advance()
+          } else { // varName
+            val seg = symbolTable.kindOf(name) match {
+              case StaticKind => StaticSegment
+              case FieldKind => {
+                writer.writePop(PointerSegment, 0)
+                ThisSegment
+              }
+              case ArgumentKind => ArgSegment
+              case VarKind => LocalSegment
+              case NoneKind => TempSegment
+            }
+            writer.writePush(seg, symbolTable.indexOf(name))
           }
         }
       }
