@@ -214,6 +214,8 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
     tokenizer.advance()
     compileSubroutineCall()
 
+    writer.writePop(TempSegment, 0)
+
     // ;
 
     tokenizer.advance()
