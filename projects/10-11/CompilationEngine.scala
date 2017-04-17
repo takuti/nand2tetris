@@ -282,6 +282,14 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
     tokenizer.advance()
     val seg = if (tokenizer.tokenType() == SYMBOL && tokenizer.symbol() == '[') {
       // array access
+      //
+      val arraySeg = symbolTable.kindOf(varName) match {
+        case StaticKind => StaticSegment
+        case FieldKind => ThisSegment
+        case ArgumentKind => ArgSegment
+        case VarKind => LocalSegment
+        case NoneKind => TempSegment
+      }
 
       // '['
 
@@ -292,7 +300,8 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
       tokenizer.advance()
 
-      writer.writePop(PointerSegment, 1)
+      writer.writePush(arraySeg, symbolTable.indexOf(varName))
+      writer.writeArithmetic(ADD)
 
       ThatSegment
     } else {
@@ -312,8 +321,14 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     // ';'
 
-    if (seg == ThatSegment) writer.writePop(ThatSegment, 0)
-    else writer.writePop(seg, symbolTable.indexOf(varName))
+    if (seg == ThatSegment) {
+      writer.writePop(TempSegment, 0)
+      writer.writePop(PointerSegment, 1)
+      writer.writePush(TempSegment, 0)
+      writer.writePop(ThatSegment, 0)
+    } else {
+      writer.writePop(seg, symbolTable.indexOf(varName))
+    }
 
     tokenizer.advance()
   }
@@ -478,7 +493,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
         writer.writeCall("String.new", 1)
         str.foreach { c =>
             writer.writePush(ConstSegment, c.toInt)
-            writer.writeCall("String.appendChar", 1)
+            writer.writeCall("String.appendChar", 2)
         }
         tokenizer.advance()
       }
@@ -515,12 +530,23 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
           } else if (tokenizer.symbol() == '[') {
             // varName '[' expression ']' (array access)
 
+            val seg = symbolTable.kindOf(name) match {
+              case StaticKind => StaticSegment
+              case FieldKind => ThisSegment
+              case ArgumentKind => ArgSegment
+              case VarKind => LocalSegment
+              case NoneKind => TempSegment
+            }
+
             // '['
 
             tokenizer.advance()
             compileExpression()
 
             // ']'
+
+            writer.writePush(seg, symbolTable.indexOf(name))
+            writer.writeArithmetic(ADD)
 
             writer.writePop(PointerSegment, 1)
             writer.writePush(ThatSegment, 0)
