@@ -87,6 +87,9 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
   }
 
   def compileSubroutine() {
+    nIf = 0
+    nLoop = 0
+
     symbolTable.startSubroutine()
 
     val funcType = getToken() // 'constructor' | 'function' | 'method'
@@ -100,11 +103,6 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
     tokenizer.advance() // (
 
     tokenizer.advance()
-
-    if (funcType == "method") {
-      // arg[0] is set to "this", so thre are k+1 arguments in total
-      symbolTable.define("this", className, ArgumentKind)
-    }
 
     compileParameterList()
 
@@ -121,10 +119,15 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     // "this" points to the current object
     if (funcType == "method") {
+      // arg[0] is set to "this", so thre are k+1 arguments in total
+      symbolTable.define("this", className, ArgumentKind)
+
       writer.writePush(ArgSegment, 0)
       writer.writePop(PointerSegment, 0)
     } else if (funcType == "constructor") {
-      writer.writePush(ThisSegment, 0)
+      writer.writePush(ConstSegment, symbolTable.varCount(StaticKind) + symbolTable.varCount(FieldKind))
+      writer.writeCall("Memory.alloc", 1)
+
       writer.writePop(PointerSegment, 0)
     }
 
@@ -224,23 +227,46 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
   def compileSubroutineCall() {
     // subroutineName | className | varName
     var subroutineName = getToken()
+    var varName = ""
+    var nArgs = 0
 
     tokenizer.advance()
-    if (tokenizer.symbol() == '.') {
+    if (tokenizer.symbol() == '.') { // className | varName
+      if (symbolTable.kindOf(subroutineName) != NoneKind) { // varName
+        varName = subroutineName
+        subroutineName = symbolTable.typeOf(varName) // replace with its class name
+      }
+
       subroutineName += "." // .
 
       tokenizer.advance()
       subroutineName += getToken() // subroutineName
 
       tokenizer.advance()
+    } else { // push `this` for internal subroutine
+      writer.writePush(PointerSegment, 0)
+      subroutineName = className + "." + subroutineName
+      nArgs += 1
     }
 
     // (
 
     tokenizer.advance()
-    val nArgs = compileExpressionList()
+    nArgs += compileExpressionList()
 
-    writer.writeCall(subroutineName, nArgs)
+    if (!varName.isEmpty) {
+      val seg = symbolTable.kindOf(varName) match {
+        case StaticKind => StaticSegment
+        case FieldKind => ThisSegment
+        case ArgumentKind => ArgSegment
+        case VarKind => LocalSegment
+        case _ => throw new RuntimeException
+      }
+      writer.writePush(seg, symbolTable.indexOf(varName))
+      writer.writeCall(subroutineName, nArgs + 1)
+    } else {
+      writer.writeCall(subroutineName, nArgs)
+    }
 
     // )
 
@@ -323,8 +349,6 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     writer.writeLabel("WHILE_END" + nLoopLocal)
 
-    nLoop -= 1
-
     tokenizer.advance()
   }
 
@@ -367,11 +391,12 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     // '}'
 
-    writer.writeGoto("IF_END" + nIfLocal)
-    writer.writeLabel("IF_FALSE" + nIfLocal)
-
     tokenizer.advance()
     if (tokenizer.tokenType() == KEYWORD && tokenizer.keyWord() == ELSE) {
+      // w/ `else` statement
+      writer.writeGoto("IF_END" + nIfLocal)
+      writer.writeLabel("IF_FALSE" + nIfLocal)
+
       tokenizer.advance()
       // '{'
 
@@ -381,11 +406,12 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
       // '}'
 
       tokenizer.advance()
+
+      writer.writeLabel("IF_END" + nIfLocal)
+    } else {
+      // w/o `else` statement
+      writer.writeLabel("IF_FALSE" + nIfLocal)
     }
-
-    writer.writeLabel("IF_END" + nIfLocal)
-
-    nIf -= 1
   }
 
   def compileExpression() {
@@ -442,7 +468,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
           writer.writePush(ConstSegment, 0)
           tokenizer.advance()
         } else if (kw == THIS) {
-          writer.writePush(ArgSegment, 0)
+          writer.writePush(PointerSegment, 0)
           tokenizer.advance()
         }
       }
@@ -503,10 +529,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
           } else { // varName
             val seg = symbolTable.kindOf(name) match {
               case StaticKind => StaticSegment
-              case FieldKind => {
-                writer.writePop(PointerSegment, 0)
-                ThisSegment
-              }
+              case FieldKind => ThisSegment
               case ArgumentKind => ArgSegment
               case VarKind => LocalSegment
               case NoneKind => TempSegment
