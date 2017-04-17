@@ -94,6 +94,11 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     val funcType = getToken() // 'constructor' | 'function' | 'method'
 
+    if (funcType == "method") {
+      // arg[0] is set to "this", so thre are k+1 arguments in total
+      symbolTable.define("this", className, ArgumentKind)
+    }
+
     tokenizer.advance() // 'void' | type
     val returnType = getToken()
 
@@ -119,13 +124,10 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
     // "this" points to the current object
     if (funcType == "method") {
-      // arg[0] is set to "this", so thre are k+1 arguments in total
-      symbolTable.define("this", className, ArgumentKind)
-
       writer.writePush(ArgSegment, 0)
       writer.writePop(PointerSegment, 0)
     } else if (funcType == "constructor") {
-      writer.writePush(ConstSegment, symbolTable.varCount(StaticKind) + symbolTable.varCount(FieldKind))
+      writer.writePush(ConstSegment, symbolTable.varCount(FieldKind))
       writer.writeCall("Memory.alloc", 1)
 
       writer.writePop(PointerSegment, 0)
@@ -227,14 +229,22 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
   def compileSubroutineCall() {
     // subroutineName | className | varName
     var subroutineName = getToken()
-    var varName = ""
+    var isVar = false
     var nArgs = 0
 
     tokenizer.advance()
     if (tokenizer.symbol() == '.') { // className | varName
       if (symbolTable.kindOf(subroutineName) != NoneKind) { // varName
-        varName = subroutineName
-        subroutineName = symbolTable.typeOf(varName) // replace with its class name
+        isVar = true
+        val seg = symbolTable.kindOf(subroutineName) match {
+          case StaticKind => StaticSegment
+          case FieldKind => ThisSegment
+          case ArgumentKind => ArgSegment
+          case VarKind => LocalSegment
+          case _ => throw new RuntimeException
+        }
+        writer.writePush(seg, symbolTable.indexOf(subroutineName))
+        subroutineName = symbolTable.typeOf(subroutineName) // replace with its class name
       }
 
       subroutineName += "." // .
@@ -254,15 +264,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
     tokenizer.advance()
     nArgs += compileExpressionList()
 
-    if (!varName.isEmpty) {
-      val seg = symbolTable.kindOf(varName) match {
-        case StaticKind => StaticSegment
-        case FieldKind => ThisSegment
-        case ArgumentKind => ArgSegment
-        case VarKind => LocalSegment
-        case _ => throw new RuntimeException
-      }
-      writer.writePush(seg, symbolTable.indexOf(varName))
+    if (isVar) {
       writer.writeCall(subroutineName, nArgs + 1)
     } else {
       writer.writeCall(subroutineName, nArgs)
@@ -503,6 +505,7 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
       }
       case IDENTIFIER => {
         // varName | subroutineName
+        var isVarCall = false
         var name = getToken()
         tokenizer.advance()
 
@@ -512,6 +515,18 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
             if (tokenizer.symbol() == '.') {
               // .
+              if (symbolTable.kindOf(name) != NoneKind) { // varName
+                isVarCall = true
+                val seg = symbolTable.kindOf(name) match {
+                  case StaticKind => StaticSegment
+                  case FieldKind => ThisSegment
+                  case ArgumentKind => ArgSegment
+                  case VarKind => LocalSegment
+                  case _ => throw new RuntimeException
+                }
+                writer.writePush(seg, symbolTable.indexOf(name))
+                name = symbolTable.typeOf(name) // replace with its class name
+              }
 
               tokenizer.advance()
               name = name + "." + getToken() // subroutineName
@@ -523,7 +538,11 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
             tokenizer.advance()
             val nExpr = compileExpressionList()
-            writer.writeCall(name, nExpr)
+            if (isVarCall) {
+              writer.writeCall(name, nExpr + 1)
+            } else {
+              writer.writeCall(name, nExpr)
+            }
 
             // )
             tokenizer.advance()
