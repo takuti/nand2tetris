@@ -1,4 +1,4 @@
-package jackanalizer
+package compiler
 
 import java.io.{BufferedReader,FileReader}
 
@@ -33,10 +33,10 @@ case object NULL extends KW
 case object THIS extends KW
 
 class JackTokenizer(_filepath: String) {
-  val keywords = Array("class", "constructor", "function", "method", "field", "static", "var", "int", "char", "boolean", "void", "true", "false", "null", "this", "let", "do", "if", "else", "while", "return")
-  val symbols = Array("{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "|", "<", ">", "=", "~")
+  val keywords = Seq("class", "constructor", "function", "method", "field", "static", "var", "int", "char", "boolean", "void", "true", "false", "null", "this", "let", "do", "if", "else", "while", "return")
+  val symbols = Seq("{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "|", "<", ">", "=", "~")
 
-  val type_matcher = Map(
+  val typeMatcher = Map(
     "keyword" -> keywords.mkString("|"),
     "symbol" -> { for (s <- symbols) yield "\\" + s }.mkString("|"),
     "integerConstant" -> "\\d+",
@@ -45,8 +45,8 @@ class JackTokenizer(_filepath: String) {
   )
 
   // get all lines
-  val file_reader = new BufferedReader(new FileReader(_filepath))
-  val code = Iterator.continually(file_reader.readLine()).takeWhile(_ != null).mkString("\n")
+  val fileReader = new BufferedReader(new FileReader(_filepath))
+  val code = Iterator.continually(fileReader.readLine()).takeWhile(_ != null).mkString("\n")
 
   // normalize code and separate the code by whitespaces
   // (double-quoted string constants must be handled correctly)
@@ -56,19 +56,19 @@ class JackTokenizer(_filepath: String) {
 
   def normalize(s: String) = {
     // remove comments and trim the code
-    val s_commentless = "(//.*?\n|/\\*[\\s\\S]*?\\*/)".r.replaceAllIn(s, "").trim
+    val sCommentless = "(//.*?\n|/\\*[\\s\\S]*?\\*/)".r.replaceAllIn(s, "").trim
 
     // keep string constants
-    val string_constants = type_matcher("stringConstant").r.findAllIn(s_commentless)
+    val stringConstants = typeMatcher("stringConstant").r.findAllIn(sCommentless)
 
     // replace string constants with temporary string "STRING_CONST"
-    val s_tmp_string = type_matcher("stringConstant").r.replaceAllIn(s_commentless, "\"STRING\"")
+    val sTmpString = typeMatcher("stringConstant").r.replaceAllIn(sCommentless, "\"STRING\"")
 
     // add spaces to both ends of symbols
-    var res = type_matcher("symbol").r.replaceAllIn(s_tmp_string, " " + _ + " ")
+    var res = typeMatcher("symbol").r.replaceAllIn(sTmpString, " " + _ + " ")
 
     // put back the keeping string constants
-    for (sc <- string_constants) res = res.replaceFirst("\"STRING\"", sc)
+    for (sc <- stringConstants) res = res.replaceFirst("\"STRING\"", sc)
     res
   }
 
@@ -77,18 +77,15 @@ class JackTokenizer(_filepath: String) {
   // called when hasMoreTokens() returned true
   def advance() = { token = tokens.next() }
 
-  def tokenType(): TokenType = {
-    token match {
-      case t if t.matches(type_matcher("keyword"))          => KEYWORD
-      case t if t.matches(type_matcher("symbol"))           => SYMBOL
-      case t if t.matches(type_matcher("integerConstant"))  => INT_CONST
-      case t if t.matches(type_matcher("stringConstant"))   => STRING_CONST
-      case t if t.matches(type_matcher("identifier"))       => IDENTIFIER
+  def tokenType(): TokenType = token match {
+      case t if t.matches(typeMatcher("keyword"))          => KEYWORD
+      case t if t.matches(typeMatcher("symbol"))           => SYMBOL
+      case t if t.matches(typeMatcher("integerConstant"))  => INT_CONST
+      case t if t.matches(typeMatcher("stringConstant"))   => STRING_CONST
+      case t if t.matches(typeMatcher("identifier"))       => IDENTIFIER
     }
-  }
 
-  def keyWord(): KW = {
-    token match {
+  def keyWord(): KW = token match {
       case "class"        => CLASS
       case "method"       => METHOD
       case "function"     => FUNCTION
@@ -111,7 +108,6 @@ class JackTokenizer(_filepath: String) {
       case "null"         => NULL
       case "this"         => THIS
     }
-  }
 
   def symbol(): Char = token.charAt(0)
 

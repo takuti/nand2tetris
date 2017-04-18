@@ -1,4 +1,4 @@
-package jackanalizer
+package compiler
 
 sealed abstract class Kind
 case object StaticKind extends Kind
@@ -30,28 +30,24 @@ class SymbolTable {
     counter(kind.toString) += 1
   }
 
-  def varCount(kind: Kind): Int = {
+  def varCount(kind: Kind): Int =
     if (kind == StaticKind || kind == FieldKind)
       stClass.filter(t => t._2.kind == kind).size
     else
       stSubroutine.filter(t => t._2.kind == kind).size
-  }
 
-  def kindOf(name: String): Kind = {
+  def kindOf(name: String): Kind =
     if (stClass.contains(name)) stClass(name).kind
     else if (stSubroutine.contains(name)) stSubroutine(name).kind
     else NoneKind
-  }
 
-  def typeOf(name: String): String = {
+  def typeOf(name: String): String =
     if (stClass.contains(name)) stClass(name).stype
     else if (stSubroutine.contains(name)) stSubroutine(name).stype
     else ""
-  }
 
-  def indexOf(name: String): Int = {
+  def indexOf(name: String): Int =
     if (stClass.contains(name)) stClass(name).idx
     else if (stSubroutine.contains(name)) stSubroutine(name).idx
     else 0
-  }
 }

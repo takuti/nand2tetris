@@ -1,6 +1,6 @@
-import java.io.{File,PrintWriter}
+package compiler
 
-import jackanalizer._
+import java.io.{File,PrintWriter}
 
 object JackCompiler {
   def main(args: Array[String]): Unit = {
@@ -9,24 +9,22 @@ object JackCompiler {
       System.exit(1)
     }
 
-    val is_dir = !args(0).matches("(.*?)\\.jack")
-    val in_filepaths = (
-      if (is_dir) {
-        val dirpath = (args{0} + "/").replaceAll("/+$", "/")
+    val isDir = !args(0).matches("(.*?)\\.jack")
+    val inFilepaths: Seq[String] = if (isDir) {
+        val dirpath = (args(0) + "/").replaceAll("/+$", "/")
         val dir = new File(dirpath)
-        val files_all = dir.listFiles
-        files_all.collect {
+        val allFiles = dir.listFiles
+        allFiles.collect {
           case f if ".*?\\.jack".r.findFirstIn(f.getName).isDefined => dirpath + f.getName
         }
       } else {
-        Array(args(0))
+        Seq(args(0))
       }
-    )
 
     // CompilationEngine: xxx.jack -> xxx.xml
-    for (in_filepath <- in_filepaths) {
-      val out_filepath = in_filepath.replaceAll("\\.jack", ".vm")
-      new CompilationEngine(in_filepath, out_filepath)
+    for (inFilepath <- inFilepaths) {
+      val outFilepath = inFilepath.replaceAll("\\.jack", ".vm")
+      new CompilationEngine(inFilepath, outFilepath)
     }
   }
 }

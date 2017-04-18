@@ -1,4 +1,4 @@
-package jackanalizer
+package compiler
 
 import java.io.PrintWriter
 

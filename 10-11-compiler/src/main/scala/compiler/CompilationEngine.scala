@@ -1,11 +1,10 @@
-package jackanalizer
+package compiler
 
 import java.io.{BufferedReader,FileReader,PrintWriter}
-import jackanalizer._
 
-class CompilationEngine(_in_filepath: String, _out_filepath: String) {
-  val tokenizer = new JackTokenizer(_in_filepath)
-  val writer = new VMWriter(_out_filepath)
+class CompilationEngine(_inFilepath: String, _outFilepath: String) {
+  val tokenizer = new JackTokenizer(_inFilepath)
+  val writer = new VMWriter(_outFilepath)
   val symbolTable = new SymbolTable()
 
   var className = ""
@@ -25,15 +24,13 @@ class CompilationEngine(_in_filepath: String, _out_filepath: String) {
 
   writer.close()
 
-  def getToken(): String = {
-    tokenizer.tokenType() match {
+  def getToken(): String = tokenizer.tokenType() match {
       case KEYWORD      => tokenizer.token
       case SYMBOL       => tokenizer.symbol().toString
       case INT_CONST    => tokenizer.intVal().toString
       case STRING_CONST => tokenizer.stringVal()
       case IDENTIFIER   => tokenizer.identifier()
     }
-  }
 
   def compileClass() {
     // class

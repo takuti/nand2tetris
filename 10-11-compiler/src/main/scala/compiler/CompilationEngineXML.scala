@@ -1,11 +1,10 @@
-package jackanalizer
+package compiler
 
 import java.io.{BufferedReader,FileReader,PrintWriter}
-import jackanalizer._
 
-class CompilationEngineXML(_in_filepath: String, _out_filepath: String) {
-  val tokenizer = new JackTokenizer(_in_filepath)
-  val writer = new PrintWriter(_out_filepath)
+class CompilationEngineXML(_inFilepath: String, _outFilepath: String) {
+  val tokenizer = new JackTokenizer(_inFilepath)
+  val writer = new PrintWriter(_outFilepath)
 
   // for each `compileXX` methods...
   // Rule #1: "advance" for the 1st grammer element is done by caller
