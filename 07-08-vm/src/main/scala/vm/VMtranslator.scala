@@ -1,7 +1,6 @@
-import java.io.File
+package vmtranslator
 
-import vmtranslator.{CommandType,C_ARITHMETIC,C_PUSH,C_POP,C_LABEL,C_GOTO,C_IF,C_FUNCTION,C_RETURN,C_CALL}
-import vmtranslator.{Parser,CodeWriter}
+import java.io.File
 
 object VMtranslator {
   def main(args: Array[String]): Unit = {
@@ -11,42 +10,40 @@ object VMtranslator {
       System.exit(1)
     }
 
-    val is_dir = !args{0}.matches("(.*?)\\.vm")
-    var in_filenames = Array[String]()
+    val isDir = !args(0).matches("(.*?)\\.vm")
+    var inFilenames = Seq[String]()
 
-    val out_filename = (
-      if (is_dir) {
+    val outFilename = if (isDir) {
         // need to translate all .vm files under a directory
-        val dirpath = (args{0} + "/").replaceAll("/+$", "/")
+        val dirpath = (args(0) + "/").replaceAll("/+$", "/")
         val dir = new File(dirpath)
-        val files_all = dir.listFiles
-        val files_vm = files_all.filter(f => ".*?\\.vm".r.findFirstIn(f.getName).isDefined)
-        for (f <- files_vm) in_filenames :+= dirpath + f.getName
+        val allFiles = dir.listFiles
+        val vmFiles = allFiles.filter(f => ".*?\\.vm".r.findFirstIn(f.getName).isDefined)
+        vmFiles.foreach(f => inFilenames :+= dirpath + f.getName)
 
         dirpath + dir.getName + ".asm"
       } else {
-        in_filenames :+= args{0}
+        inFilenames :+= args(0)
 
-        args{0}.replaceAll("\\.vm", ".asm")
+        args(0).replaceAll("\\.vm", ".asm")
       }
-    )
 
-    val writer = new CodeWriter(out_filename)
+    val writer = new CodeWriter(outFilename)
 
     // bootstrap code if Sys.vm exists
-    if (in_filenames.filter(name => ".*?\\Sys.vm".r.findFirstIn(name).nonEmpty).nonEmpty) {
+    if (inFilenames.filter(name => ".*?\\Sys.vm".r.findFirstIn(name).nonEmpty).nonEmpty) {
       writer.writer.write("@256\nD=A\n@0\nM=D\n") // SP = 256
       writer.writeCall("Sys.init", 0) // call Sys.init
     }
 
-    for (in_filename <- in_filenames) {
-      val parser = new Parser(in_filename)
-      writer.setFileName(in_filename)
+    for (inFilename <- inFilenames) {
+      val parser = new Parser(inFilename)
+      writer.setFileName(inFilename)
 
       while (parser.hasMoreCommands()) {
         parser.advance()
 
-        if (!parser.command.isEmpty()) {
+        if (!parser.command.isEmpty) {
           parser.commandType() match {
             case C_ARITHMETIC             => writer.writeArithmetic(parser.arg1())
             case ctype @ (C_PUSH | C_POP) => writer.writePushPop(ctype, parser.arg1(), parser.arg2())
@@ -62,6 +59,5 @@ object VMtranslator {
     }
 
     writer.close()
-
   }
 }

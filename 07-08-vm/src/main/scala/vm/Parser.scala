@@ -27,9 +27,8 @@ class Parser(_filename: String) {
     command = "\\/\\/.*".r.replaceAllIn(command, "").trim
   }
 
-  def commandType(): CommandType = {
+  def commandType(): CommandType = command.split("\\s+")(0) match {
     // get a `command` part from a full VM command
-    command.split("\\s+"){0} match {
       case "push"     => C_PUSH
       case "pop"      => C_POP
       case "label"    => C_LABEL
@@ -40,15 +39,14 @@ class Parser(_filename: String) {
       case "return"   => C_RETURN
       case _          => C_ARITHMETIC
     }
-  }
 
   // C_RETURN command cannot call this method
   def arg1(): String = {
     val cmd = command.split("\\s+")
-    if (commandType() == C_ARITHMETIC) cmd{0}
-    else command.split("\\s+"){1}
+    if (commandType() == C_ARITHMETIC) cmd(0)
+    else command.split("\\s+")(1)
   }
 
   // Only C_PUSH, C_POP, C_FUNCTION and C_CALL can call this method
-  def arg2(): Int = command.split("\\s+"){2}.toInt
+  def arg2(): Int = command.split("\\s+")(2).toInt
 }
