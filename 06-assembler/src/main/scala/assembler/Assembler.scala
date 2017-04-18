@@ -1,5 +1,6 @@
+package assembler
+
 import java.io.PrintWriter
-import assembler._
 
 object Assembler {
   def initializeSymbolTable(): SymbolTable = {
@@ -26,49 +27,51 @@ object Assembler {
     while (parser.hasMoreCommands()) {
       parser.advance()
 
-      if (!parser.command.isEmpty()) {
-        val ctype: CommandType = parser.commandType()
-
-        if (ctype == A_COMMAND || ctype == C_COMMAND) address += 1
-        else st.addEntry(parser.symbol(), address) // L_COMMAND (Xxx)
+      if (!parser.command.isEmpty) {
+        parser.commandType() match {
+          case A_COMMAND | C_COMMAND => address += 1
+          case _ => st.addEntry(parser.symbol(), address) // L_COMMAND (Xxx)
+        }
       }
     }
   }
 
-  def secondPass(st: SymbolTable, in_filename: String, out_filename: String) = {
-    val writer = new PrintWriter(out_filename)
+  def secondPass(st: SymbolTable, inFilename: String, outFilename: String) = {
+    val writer = new PrintWriter(outFilename)
 
-    val parser = new Parser(in_filename)
+    val parser = new Parser(inFilename)
     val code = new Code
-    var ram_address = 16
+    var ramAddress = 16
 
     // parsing
     while (parser.hasMoreCommands()) {
       parser.advance()
 
-      if (!parser.command.isEmpty()) {
-        val ctype: CommandType = parser.commandType()
-
-        if (ctype == A_COMMAND) {
-          val symbol = parser.symbol()
-          var addr = 0
-
-          // @Xxx (Xxx is numeric, or not)
-          if (symbol.matches("[0-9]+")) {
-            addr = symbol.toInt
-          } else {
-            // add new label
-            if (!st.contains(symbol)) {
-              st.addEntry(symbol, ram_address)
-              ram_address += 1
+      if (!parser.command.isEmpty) {
+        parser.commandType() match {
+          case A_COMMAND => {
+            val numPattern = "([0-9]+)".r
+            val addr = parser.symbol() match {
+              case numPattern(symbol) =>
+                symbol.toInt
+              case _ @ symbol => {
+                // add new label
+                if (!st.contains(symbol)) {
+                  st.addEntry(symbol, ramAddress)
+                  ramAddress += 1
+                }
+                st.getAddress(symbol)
+              }
             }
-
-            addr = st.getAddress(symbol)
+            writer.write(String.format("0%15s\n", Integer.toBinaryString(addr))
+              .replace(' ', '0'))
           }
-
-          writer.write(String.format("0%15s\n", Integer.toBinaryString(addr)).replace(' ', '0'))
-        } else if (ctype == C_COMMAND) {
-          writer.write("111" + code.comp(parser.comp()) + code.dest(parser.dest()) + code.jump(parser.jump()) + "\n")
+          case C_COMMAND =>
+            writer.write("111"
+              + code.comp(parser.comp())
+              + code.dest(parser.dest())
+              + code.jump(parser.jump()) + "\n")
+          case _ =>
         }
       }
     }
@@ -88,11 +91,11 @@ object Assembler {
 
     // get an output filename corresponding to the .hack files
     val pattern = "(.*?)\\.asm".r
-    val out_filename = args(0) match {
+    val outFilename: String = args(0) match {
       case pattern(name) => name + ".hack"
-      case _             => System.exit(1)
+      case _             => throw new RuntimeException
     }
 
-    secondPass(st, args(0), out_filename.toString)
+    secondPass(st, args(0), outFilename)
   }
 }
