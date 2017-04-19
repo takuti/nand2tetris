@@ -9,16 +9,18 @@ object JackAnalyzer {
       System.exit(1)
     }
 
-    val isDir = !args(0).matches("(.*?)\\.jack")
-    val inFilepaths: Seq[String] = if (isDir) {
-        val dirpath = (args(0) + "/").replaceAll("/+$", "/")
-        val dir = new File(dirpath)
-        val allFiles = dir.listFiles
-        allFiles.collect {
-          case f if ".*?\\.jack".r.findFirstIn(f.getName).isDefined => dirpath + f.getName
-        }
+    val path = args(0)
+    val isJack = path.matches("(.*?)\\.jack")
+    val inFilepaths: Seq[String] =
+      if (isJack) {
+        Seq(path)
       } else {
-        Seq(args(0))
+        val file = new File(path)
+        if (!file.isDirectory) throw new RuntimeException("Only .jack files or directories are acceptable")
+        val allFiles = file.listFiles
+        allFiles.collect {
+          case f if ".*?\\.jack".r.findFirstIn(f.getName).isDefined => path + "/" + f.getName
+        }
       }
 
     // Tokenizer: xxx.jack -> xxxT.xml
