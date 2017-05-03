@@ -10,10 +10,10 @@ object VMtranslator {
       System.exit(1)
     }
 
-    val isDir = !args(0).matches("(.*?)\\.vm")
+    val isVm = !args(0).matches("(.*?)\\.vm")
     var inFilenames = Seq[String]()
 
-    val outFilename = if (isDir) {
+    val outFilename = if (isVm) {
         // need to translate all .vm files under a directory
         val dirpath = (args(0) + "/").replaceAll("/+$", "/")
         val dir = new File(dirpath)
