@@ -71,7 +71,7 @@ object Assembler {
               + code.comp(parser.comp())
               + code.dest(parser.dest())
               + code.jump(parser.jump()) + "\n")
-          case _ =>
+          case _ => // noop
         }
       }
     }
