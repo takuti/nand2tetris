@@ -205,9 +205,9 @@ sub
 pop local 1
 label WHILE_EXP0
 push local 1
-push constant 0
-eq
-not
+push constant 1
+neg
+gt
 not
 if-goto WHILE_END0
 push local 0
@@ -224,9 +224,8 @@ call Math.multiply 2
 pop local 3
 push local 3
 push argument 0
-push constant 1
-add
-lt
+gt
+not
 push local 3
 push constant 0
 gt

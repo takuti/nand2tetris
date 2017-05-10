@@ -101,10 +101,10 @@ class Math {
       var int y, j, tmp1, tmp2;
       let y = 0;
       let j = Math.divide(16, 2) - 1;
-      while (~(j = 0)) {
+      while (j > -1) {
         let tmp1 = y + twoToThe[j]; // y + 2^j
         let tmp2 = Math.multiply(tmp1, tmp1);
-        if ((tmp2 < (x + 1)) & (tmp2 > 0)) {
+        if (~(tmp2 > x) & (tmp2 > 0)) {
           let y = tmp1;
         }
         let j = j - 1;
