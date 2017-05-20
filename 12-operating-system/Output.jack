@@ -21,15 +21,15 @@ class Output {
 
     static Array twoToThe;
 
-    static int ci, cj;
+    static int row, col;
 
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
       var int i, n;
 
       do Screen.clearScreen();
-      let ci = 0;
-      let cj = 0;
+      let row = 0;
+      let col = 0;
 
       let twoToThe = Array.new(16);
       let i = 0;
@@ -101,7 +101,7 @@ class Output {
         do Output.create(64,30,51,51,59,59,59,27,3,30,0,0);  // @
         do Output.create(63,30,51,51,24,12,12,0,12,12,0,0);  // ?
 
-        do Output.create(65,0,0,0,0,0,0,0,0,0,0,0);          // A ** TO BE FILLED **
+        do Output.create(65,12,30,51,51,63,51,51,51,51,0,0); // A
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
         do Output.create(68,15,27,51,51,51,51,51,27,15,0,0); // D
@@ -206,10 +206,37 @@ class Output {
     /** Moves the cursor to the j-th column of the i-th row,
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
-      let ci = i;
-      let cj = j;
+      var int x, y;
 
-      do Output.printChar(32);
+      let row = i;
+      let col = j;
+
+      if (col = 64) {
+        let col = 0;
+        let row = row + 1;
+      }
+      if (col < 0) {
+        let col = 63;
+        let row = row - 1;
+      }
+      if (row = 23) {
+        let row = 0;
+      }
+      if (row < 0) {
+        let row = 22;
+      }
+
+      // erase
+      let y = 0;
+      do Screen.setColor(false);
+      while (y < 11) {
+        let x = 0;
+        while (x < 8) {
+          do Screen.drawPixel(col * 8 + x, row * 11 + y);
+          let x = x + 1;
+        }
+        let y = y + 1;
+      }
 
       return;
     }
@@ -217,26 +244,23 @@ class Output {
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
     function void printChar(char c) {
-      var int i, j;
+      var int x, y;
       var Array map;
-      let i = 0;
+      let y = 0;
       let map = Output.getMap(c);
-      while (i < 11) {
-        let j = 0;
-        while (j < 8) {
-          if (Output.bit(map[i], j)) {
-            do Screen.drawPixel(cj * 8 + j, ci * 11 + i);
+      do Screen.setColor(true);
+      while (y < 11) {
+        let x = 0;
+        while (x < 8) {
+          if (Output.bit(map[y], x)) {
+            do Screen.drawPixel(col * 8 + x, row * 11 + y);
           }
-          let j = j + 1;
+          let x = x + 1;
         }
-        let i = i + 1;
+        let y = y + 1;
       }
 
-      let cj = cj + 1;
-      if (cj = 64) {
-        let ci = ci + 1;
-        let cj = 0;
-      }
+      do Output.moveCursor(row, col + 1);
 
       return;
     }
@@ -244,10 +268,10 @@ class Output {
     /** displays the given string starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printString(String s) {
-      var int l, i;
-      let l = s.length();
+      var int len, i;
+      let len = s.length();
       let i = 0;
-      while (i < l) {
+      while (i < len) {
         do Output.printChar(s.charAt(i));
         let i = i + 1;
       }
@@ -258,7 +282,7 @@ class Output {
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
       var String s;
-      let s = String.new(10);
+      let s = String.new(64);
       do s.setInt(i);
       do Output.printString(s);
       return;
@@ -266,18 +290,13 @@ class Output {
 
     /** Advances the cursor to the beginning of the next line. */
     function void println() {
-      let ci = ci + 1;
-      let cj = 0;
+      do Output.moveCursor(row + 1, 0);
       return;
     }
 
     /** Moves the cursor one column back. */
     function void backSpace() {
-      let cj = cj - 1;
-      if (cj < 0) {
-        let ci = ci - 1;
-        let cj = 63;
-      }
+      do Output.moveCursor(row, col - 1);
       return;
     }
 }
