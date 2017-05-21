@@ -10,72 +10,72 @@
  */
 class Memory {
 
-    static Array memory;
-    static int heapBase, heapLength;
-    static Array freeList;
+  static Array memory;
+  static int heapBase, heapLength;
+  static Array freeList;
 
-    /** Initializes the class. */
-    function void init() {
-      let memory = 0;
-      let heapBase = 2048; // ~16383
-      let heapLength = 16383 - heapBase;
-      let freeList = heapBase;
-      let freeList[0] = heapLength;
-      let freeList[1] = null;
-      return;
+  /** Initializes the class. */
+  function void init() {
+    let memory = 0;
+    let heapBase = 2048; // ~16383
+    let heapLength = 16383 - heapBase;
+    let freeList = heapBase;
+    let freeList[0] = heapLength;
+    let freeList[1] = null;
+    return;
+  }
+
+  /** Returns the RAM value at the given address. */
+  function int peek(int address) {
+    return memory[address];
+  }
+
+  /** Sets the RAM value at the given address to the given value. */
+  function void poke(int address, int value) {
+    let memory[address] = value;
+    return;
+  }
+
+  /** Finds an available RAM block of the given size and returns
+   *  a reference to its base address. */
+  function int alloc(int size) {
+    var int remain;
+    var Array block, head, tmp, prev;
+
+    // find segment by first-fit algorithm
+    let head = freeList;
+    while (head[0] < (size + 1)) {
+      let prev = head;
+      let head = head[1];
+    }
+    // in practice, if head = null, do de-fragmentation here
+
+
+    // update freeList
+    let remain = head[0] - (size + 1);
+    if (remain < 2) { // found segment is reasonably small, allocate all of them
+      let block = head + 1;
+      let prev[1] = head + head[0];
+    } else {
+      // nextAddr - necessary size + 1 (for block[-1] = "size")
+      let block = (head + head[0]) - (size + 1) + 1;
+      let head[0] = remain;
     }
 
-    /** Returns the RAM value at the given address. */
-    function int peek(int address) {
-      return memory[address];
-    }
+    let block[-1] = size + 1;
 
-    /** Sets the RAM value at the given address to the given value. */
-    function void poke(int address, int value) {
-      let memory[address] = value;
-      return;
-    }
+    return block;
+  }
 
-    /** Finds an available RAM block of the given size and returns
-     *  a reference to its base address. */
-    function int alloc(int size) {
-      var int remain;
-      var Array block, head, tmp, prev;
-
-      // find segment by first-fit algorithm
-      let head = freeList;
-      while (head[0] < (size + 1)) {
-        let prev = head;
-        let head = head[1];
-      }
-      // in practice, if head = null, do de-fragmentation here
-
-
-      // update freeList
-      let remain = head[0] - (size + 1);
-      if (remain < 2) { // found segment is reasonably small, allocate all of them
-        let block = head + 1;
-        let prev[1] = head + head[0];
-      } else {
-        // nextAddr - necessary size + 1 (for block[-1] = "size")
-        let block = (head + head[0]) - (size + 1) + 1;
-        let head[0] = remain;
-      }
-
-      let block[-1] = size + 1;
-
-      return block;
-    }
-
-    /** De-allocates the given object (cast as an array) by making
-     *  it available for future allocations. */
-    function void deAlloc(Array o) {
-      var Array seg, tmp;
-      let seg = o - 1;
-      let seg[0] = o[-1];
-      let tmp = freeList[1];
-      let freeList[1] = seg;
-      let seg[1] = tmp;
-      return;
-    }
+  /** De-allocates the given object (cast as an array) by making
+   *  it available for future allocations. */
+  function void deAlloc(Array o) {
+    var Array seg, tmp;
+    let seg = o - 1;
+    let seg[0] = o[-1];
+    let tmp = freeList[1];
+    let freeList[1] = seg;
+    let seg[1] = tmp;
+    return;
+  }
 }

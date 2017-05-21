@@ -8,73 +8,73 @@
  */
 class Sys {
 
-    /** Performs all the initializations required by the OS. */
-    function void init() {
-      // initialize all OS classes
-      // * Math, Output, Screen depend on Memory
-      // * Output depends on Screen
-      do Memory.init();
-      do Keyboard.init();
-      do Math.init();
-      do Screen.init();
-      do Output.init();
+  /** Performs all the initializations required by the OS. */
+  function void init() {
+    // initialize all OS classes
+    // * Math, Output, Screen depend on Memory
+    // * Output depends on Screen
+    do Memory.init();
+    do Keyboard.init();
+    do Math.init();
+    do Screen.init();
+    do Output.init();
 
-      // initialize app
-      do Main.main();
+    // initialize app
+    do Main.main();
 
-      do Sys.halt();
+    do Sys.halt();
 
-      return;
+    return;
+  }
+
+  /** Halts the program execution. */
+  function void halt() {
+    while (true) {
+      // noop
     }
+    return;
+  }
 
-    /** Halts the program execution. */
-    function void halt() {
-      while (true) {
-        // noop
+  /** Waits approximately duration milliseconds and returns.  */
+  function void wait(int duration) {
+    var int i, j, ms;
+    let ms = 100;
+    let i = 0;
+    while (i < duration) {
+      let j = 0;
+      while (j < ms) {
+        let j = j + 1;
       }
-      return;
+      let i = i + 1;
+    }
+    return;
+  }
+
+  /** Displays the given error code in the form "ERR<errorCode>",
+   *  and halts the program's execution. */
+  function void error(int errorCode) {
+    var String s1, s2;
+    var int i;
+
+    let s1 = String.new(10);
+    let s2 = String.new(10);
+
+    // ERR
+    let s1 = s1.appendChar(69);
+    let s1 = s1.appendChar(82);
+    let s1 = s1.appendChar(82);
+
+    do s2.setInt(errorCode);
+
+    let i = 0;
+    while (i < s2.length()) {
+      let s1 = s1.appendChar(s2.charAt(i));
     }
 
-    /** Waits approximately duration milliseconds and returns.  */
-    function void wait(int duration) {
-      var int i, j, ms;
-      let ms = 100;
-      let i = 0;
-      while (i < duration) {
-        let j = 0;
-        while (j < ms) {
-          let j = j + 1;
-        }
-        let i = i + 1;
-      }
-      return;
-    }
+    do Output.printString(s1);
 
-    /** Displays the given error code in the form "ERR<errorCode>",
-     *  and halts the program's execution. */
-    function void error(int errorCode) {
-      var String s1, s2;
-      var int i;
+    do Sys.halt();
 
-      let s1 = String.new(10);
-      let s2 = String.new(10);
-
-      // ERR
-      let s1 = s1.appendChar(69);
-      let s1 = s1.appendChar(82);
-      let s1 = s1.appendChar(82);
-
-      do s2.setInt(errorCode);
-
-      let i = 0;
-      while (i < s2.length()) {
-        let s1 = s1.appendChar(s2.charAt(i));
-      }
-
-      do Output.printString(s1);
-
-      do Sys.halt();
-
-      return;
-    }
+    return;
+  }
 }

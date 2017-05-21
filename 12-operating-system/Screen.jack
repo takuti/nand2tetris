@@ -11,149 +11,149 @@
  */
 class Screen {
 
-    static Array twoToThe;
-    static boolean black;
+  static Array twoToThe;
+  static boolean black;
 
-    /** Initializes the Screen. */
-    function void init() {
-      var int i, n;
+  /** Initializes the Screen. */
+  function void init() {
+    var int i, n;
 
-      let twoToThe = Array.new(16);
+    let twoToThe = Array.new(16);
+    let i = 0;
+    let n = 1;
+    while (i < 16) {
+      let twoToThe[i] = n;
+      let i = i + 1;
+      let n = n + n;
+    }
+
+    let black = true;
+
+    return;
+  }
+
+  /** Erases the entire screen. */
+  function void clearScreen() {
+    var int c, r;
+    let r = 0;
+    while (r < 256) {
+      let c = 0;
+      while (c < 512) {
+        do Memory.poke(16384 + (r * 32) + (c / 16), 0);
+        let c = c + 16;
+      }
+      let r = r + 1;
+    }
+    return;
+  }
+
+  /** Sets the current color, to be used for all subsequent drawXXX commands.
+   *  Black is represented by true, white by false. */
+  function void setColor(boolean b) {
+    let black = b;
+    return;
+  }
+
+  /** Draws the (x,y) pixel, using the current color. */
+  function void drawPixel(int x, int y) {
+    var int val, addr, bit, mask, i;
+    let addr = 16384 + (y * 32) + (x / 16);
+    let val = Memory.peek(addr);
+
+    // comput c % 16
+    let bit = x;
+    while (~(bit < 16)) { // i.e., bit >= 16
+      let bit = bit - 16;
+    }
+
+    if (black) {
+      do Memory.poke(addr, val | twoToThe[bit]);
+    } else {
+      let mask = 0;
       let i = 0;
-      let n = 1;
       while (i < 16) {
-        let twoToThe[i] = n;
-        let i = i + 1;
-        let n = n + n;
-      }
-
-      let black = true;
-
-      return;
-    }
-
-    /** Erases the entire screen. */
-    function void clearScreen() {
-      var int c, r;
-      let r = 0;
-      while (r < 256) {
-        let c = 0;
-        while (c < 512) {
-          do Memory.poke(16384 + (r * 32) + (c / 16), 0);
-          let c = c + 16;
+        if (~(i = bit)) {
+          let mask = mask + twoToThe[i];
         }
-        let r = r + 1;
-      }
-      return;
-    }
-
-    /** Sets the current color, to be used for all subsequent drawXXX commands.
-     *  Black is represented by true, white by false. */
-    function void setColor(boolean b) {
-      let black = b;
-      return;
-    }
-
-    /** Draws the (x,y) pixel, using the current color. */
-    function void drawPixel(int x, int y) {
-      var int val, addr, bit, mask, i;
-      let addr = 16384 + (y * 32) + (x / 16);
-      let val = Memory.peek(addr);
-
-      // comput c % 16
-      let bit = x;
-      while (~(bit < 16)) { // i.e., bit >= 16
-        let bit = bit - 16;
-      }
-
-      if (black) {
-        do Memory.poke(addr, val | twoToThe[bit]);
-      } else {
-        let mask = 0;
-        let i = 0;
-        while (i < 16) {
-          if (~(i = bit)) {
-            let mask = mask + twoToThe[i];
-          }
-          let i = i + 1;
-        }
-        do Memory.poke(addr, val & mask);
-      }
-
-      return;
-    }
-
-    /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
-    function void drawLine(int x1, int y1, int x2, int y2) {
-      var int a, b, dx, dxAbs, dy, dyAbs, adyMinusbdx, aSign, bSign;
-
-      let a = 0;
-      let b = 0;
-      let adyMinusbdx = 0;
-
-      let dx = x2 - x1;
-      let dxAbs = Math.abs(dx);
-      let aSign = 1;
-      if (dx < 0) {
-        let aSign = -1;
-      }
-
-      let dy = y2 - y1;
-      let dyAbs = Math.abs(dy);
-      let bSign = 1;
-      if (dy < 0) {
-        let bSign = -1;
-      }
-
-      if ((dx = 0) | (dy = 0)) {
-        if (dx = 0) { // vertical line
-          while (~(b > dyAbs)) {
-            do Screen.drawPixel(x1, y1 + (bSign * b));
-            let b = b + 1;
-          }
-        } else { // horizontal line
-          while (~(a > dxAbs)) {
-            do Screen.drawPixel(x1 + (aSign * a), y1);
-            let a = a + 1;
-          }
-        }
-      } else {
-        while (~(a > dxAbs) & ~(b > dyAbs)) {
-          do Screen.drawPixel(x1 + (aSign * a), y1 + (bSign * b));
-          if (adyMinusbdx < 0) {
-            let a = a + 1;
-            let adyMinusbdx = adyMinusbdx + dyAbs;
-          } else {
-            let b = b + 1;
-            let adyMinusbdx = adyMinusbdx - dxAbs;
-          }
-        }
-      }
-      return;
-    }
-
-    /** Draws a filled rectangle whose top left corner is (x1, y1)
-     * and bottom right corner is (x2,y2), using the current color. */
-    function void drawRectangle(int x1, int y1, int x2, int y2) {
-      var int i;
-      let i = y1;
-      while (~(i > y2)) {
-        do Screen.drawLine(x1, i, x2, i);
         let i = i + 1;
       }
-      return;
+      do Memory.poke(addr, val & mask);
     }
 
-    /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
-    function void drawCircle(int x, int y, int r) {
-      var int dy, r2, d;
-      let dy = -1 * r;
-      let r2 = r * r;
-      while (~(dy > r)) {
-        let d = Math.sqrt(r2 - (dy * dy));
-        do Screen.drawLine(x - d, y + dy, x + d, y + dy);
-        let dy = dy + 1;
-      }
-      return;
+    return;
+  }
+
+  /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
+  function void drawLine(int x1, int y1, int x2, int y2) {
+    var int a, b, dx, dxAbs, dy, dyAbs, adyMinusbdx, aSign, bSign;
+
+    let a = 0;
+    let b = 0;
+    let adyMinusbdx = 0;
+
+    let dx = x2 - x1;
+    let dxAbs = Math.abs(dx);
+    let aSign = 1;
+    if (dx < 0) {
+      let aSign = -1;
     }
+
+    let dy = y2 - y1;
+    let dyAbs = Math.abs(dy);
+    let bSign = 1;
+    if (dy < 0) {
+      let bSign = -1;
+    }
+
+    if ((dx = 0) | (dy = 0)) {
+      if (dx = 0) { // vertical line
+        while (~(b > dyAbs)) {
+          do Screen.drawPixel(x1, y1 + (bSign * b));
+          let b = b + 1;
+        }
+      } else { // horizontal line
+        while (~(a > dxAbs)) {
+          do Screen.drawPixel(x1 + (aSign * a), y1);
+          let a = a + 1;
+        }
+      }
+    } else {
+      while (~(a > dxAbs) & ~(b > dyAbs)) {
+        do Screen.drawPixel(x1 + (aSign * a), y1 + (bSign * b));
+        if (adyMinusbdx < 0) {
+          let a = a + 1;
+          let adyMinusbdx = adyMinusbdx + dyAbs;
+        } else {
+          let b = b + 1;
+          let adyMinusbdx = adyMinusbdx - dxAbs;
+        }
+      }
+    }
+    return;
+  }
+
+  /** Draws a filled rectangle whose top left corner is (x1, y1)
+   * and bottom right corner is (x2,y2), using the current color. */
+  function void drawRectangle(int x1, int y1, int x2, int y2) {
+    var int i;
+    let i = y1;
+    while (~(i > y2)) {
+      do Screen.drawLine(x1, i, x2, i);
+      let i = i + 1;
+    }
+    return;
+  }
+
+  /** Draws a filled circle of radius r<=181 around (x,y), using the current color. */
+  function void drawCircle(int x, int y, int r) {
+    var int dy, r2, d;
+    let dy = -1 * r;
+    let r2 = r * r;
+    while (~(dy > r)) {
+      let d = Math.sqrt(r2 - (dy * dy));
+      do Screen.drawLine(x - d, y + dy, x + d, y + dy);
+      let dy = dy + 1;
+    }
+    return;
+  }
 }
