@@ -11,14 +11,18 @@ class Sys {
     /** Performs all the initializations required by the OS. */
     function void init() {
       // initialize all OS classes
+      // * Math, Output, Screen depend on Memory
+      // * Output depends on Screen
+      do Memory.init();
       do Keyboard.init();
       do Math.init();
-      do Memory.init();
-      do Output.init();
       do Screen.init();
+      do Output.init();
 
       // initialize app
       do Main.main();
+
+      do Sys.halt();
 
       return;
     }
@@ -68,6 +72,9 @@ class Sys {
       }
 
       do Output.printString(s1);
+
+      do Sys.halt();
+
       return;
     }
 }
